@@ -1,7 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Task, TaskStatus } from '../types/Task';
-import { colors } from '../theme/colors';
+import React from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { Task, TaskStatus } from "../types/Task";
+import { colors } from "../theme/colors";
 
 interface TaskCardProps {
   task: Task;
@@ -10,47 +10,67 @@ interface TaskCardProps {
 
 const getStatusColor = (status: TaskStatus) => {
   switch (status) {
-    case 'in-progress':
-      return '#FFD700'; // Amarillo fuerte
-    case 'completed':
+    case "in-progress":
+      return "#FFD700";
+    case "completed":
       return colors.blue.primary;
     default:
-      return '#9E9E9E'; // Gris para pendiente
+      return "#9E9E9E";
   }
 };
 
 const TaskCard: React.FC<TaskCardProps> = ({ task, onPress }) => {
-  const statusColor = getStatusColor(task.status);
-  
+  const statusColor = getStatusColor(task.status ?? "pending");
+
+  const hasOptionalProperties =
+    task.emoji || task.status || task.assignedTo || task.estimatedCompletionTime;
+
   return (
-    <TouchableOpacity 
-      onPress={onPress} 
-      style={[
-        styles.card,
-        { borderLeftColor: statusColor }
-      ]}
+    <TouchableOpacity
+      onPress={onPress}
+      style={[styles.card, { borderLeftColor: statusColor }]}
     >
       <View style={styles.content}>
-        <View style={styles.mainContent}>
-          <View style={styles.taskInfo}>
-            <Text style={styles.title}>{task.title}</Text>
-            
-            <View style={styles.statusContainer}>
-              <View style={[styles.status, { backgroundColor: statusColor }]}>
-                <Text style={styles.statusText}>
-                  {task.status === 'in-progress' ? 'En progreso' : 
-                   task.status === 'completed' ? 'Completado' : 'Pendiente'}
-                </Text>
+        {hasOptionalProperties ? (
+          <View style={styles.mainContent}>
+            {/* Emoji container */}
+            {task.emoji && (
+              <View style={[styles.emojiContainer, { borderColor: statusColor }]}>
+                <Text style={styles.emoji}>{task.emoji}</Text>
               </View>
-              
-              <Text style={styles.assignedTo}>👤 {task.assignedTo}</Text>
+            )}
+
+            <View style={styles.taskInfo}>
+              <Text style={styles.title}>{task.title}</Text>
+
+              <View style={styles.statusContainer}>
+                {task.status && (
+                  <View style={[styles.status, { backgroundColor: statusColor }]}>
+                    <Text style={styles.statusText}>
+                      {task.status === "in-progress"
+                        ? "En progreso"
+                        : task.status === "completed"
+                        ? "Completado"
+                        : "Pendiente"}
+                    </Text>
+                  </View>
+                )}
+
+                {task.assignedTo && (
+                  <Text style={styles.assignedTo}>👤 {task.assignedTo}</Text>
+                )}
+              </View>
             </View>
           </View>
-          
-          <View style={[styles.emojiContainer, { borderColor: statusColor }]}>
-            <Text style={styles.emoji}>{task.emoji}</Text>
-          </View>
-        </View>
+        ) : (
+          <Text style={styles.title}>{task.title}</Text>
+        )}
+
+        {task.estimatedCompletionTime && (
+          <Text style={styles.estimatedCompletionTime}>
+            Tiempo: {task.estimatedCompletionTime} Minutos
+          </Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -61,8 +81,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: 12,
     padding: 16,
-    marginVertical: 8,
-    marginHorizontal: 16,
+    marginVertical: 6,
+    marginHorizontal: 6,
     shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
@@ -77,23 +97,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mainContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row", // Alinea los elementos en fila
+    alignItems: "center",
   },
   taskInfo: {
     flex: 1,
-    marginRight: 16,
+    marginLeft: 16, // Agrega margen izquierdo para separar del emoji
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: colors.text.primary,
     marginBottom: 12,
   },
   statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   status: {
@@ -103,7 +122,7 @@ const styles = StyleSheet.create({
   statusText: {
     color: colors.white,
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   assignedTo: {
     fontSize: 14,
@@ -112,15 +131,21 @@ const styles = StyleSheet.create({
   emojiContainer: {
     width: 60,
     height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderRadius: 30,
     borderWidth: 2,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
+    marginRight: 16, // Espacio entre el emoji y el contenido
   },
   emoji: {
     fontSize: 32,
   },
+  estimatedCompletionTime: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    marginTop: 8,
+  },
 });
 
-export default TaskCard; 
+export default TaskCard;

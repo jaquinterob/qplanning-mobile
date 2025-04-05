@@ -1,9 +1,12 @@
-export type TaskStatus = 'pending' | 'in-progress' | 'completed';
+export type TaskStatus = "pending" | "in-progress" | "completed";
 
-export interface Task {
+export interface Activity {
   id: string;
   title: string;
-  emoji: string;
-  status: TaskStatus;
-  assignedTo: string;
-} 
+}
+export interface Task extends Activity {
+  emoji?: string;
+  status?: TaskStatus;
+  assignedTo?: string;
+  estimatedCompletionTime?: number; // in minutes
+}
