@@ -5,7 +5,7 @@ import { colors } from "../theme/colors";
 
 interface TaskCardProps {
   task: Task;
-  onPress: () => void;
+  onLognPress?: () => void;
 }
 
 const getStatusColor = (status: TaskStatus) => {
@@ -19,23 +19,28 @@ const getStatusColor = (status: TaskStatus) => {
   }
 };
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, onPress }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, onLognPress }) => {
   const statusColor = getStatusColor(task.status ?? "pending");
 
   const hasOptionalProperties =
-    task.emoji || task.status || task.assignedTo || task.estimatedCompletionTime;
+    task.emoji ||
+    task.status ||
+    task.assignedTo ||
+    task.estimatedCompletionTime;
 
   return (
     <TouchableOpacity
-      onPress={onPress}
       style={[styles.card, { borderLeftColor: statusColor }]}
+      onLongPress={onLognPress}
     >
       <View style={styles.content}>
         {hasOptionalProperties ? (
           <View style={styles.mainContent}>
             {/* Emoji container */}
             {task.emoji && (
-              <View style={[styles.emojiContainer, { borderColor: statusColor }]}>
+              <View
+                style={[styles.emojiContainer, { borderColor: statusColor }]}
+              >
                 <Text style={styles.emoji}>{task.emoji}</Text>
               </View>
             )}
@@ -45,7 +50,9 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onPress }) => {
 
               <View style={styles.statusContainer}>
                 {task.status && (
-                  <View style={[styles.status, { backgroundColor: statusColor }]}>
+                  <View
+                    style={[styles.status, { backgroundColor: statusColor }]}
+                  >
                     <Text style={styles.statusText}>
                       {task.status === "in-progress"
                         ? "En progreso"

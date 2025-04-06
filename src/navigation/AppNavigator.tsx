@@ -2,7 +2,7 @@ import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import HomeScreen from "../screens/HomeScreen";
-import CreateTaskScreen from "../screens/CreateTaskScreen";
+import PlanningScreen from "../screens/PlanningScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -16,9 +16,9 @@ const AppNavigator = () => {
           options={{ title: "qplanning" }}
         />
         <Stack.Screen
-          name="CreateTask"
-          component={CreateTaskScreen}
-          options={{ title: "Crear Tarea" }}
+          name="Planning"
+          component={PlanningScreen}
+          options={{ title: "Planeación" }}
         />
       </Stack.Navigator>
     </NavigationContainer>
