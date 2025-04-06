@@ -1,35 +1,16 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, Button } from "react-native";
-import { Picker } from "@react-native-picker/picker"; // Asegúrate de instalar esta dependencia
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { useStore } from "../store/useStore";
 
 const PlanningScreen: React.FC = () => {
-  const [title, setTitle] = useState("");
-  const [emoji, setEmoji] = useState("");
-  const [assignedTo, setAssignedTo] = useState("Eva"); // Valor predeterminado
-  const [estimatedCompletionTime, setEstimatedCompletionTime] = useState("");
-
-  const handleSubmit = () => {
-    const newTask = {
-      id: Date.now().toString(),
-      title,
-      emoji,
-      status: "pending", // Estado predeterminado
-      assignedTo,
-      estimatedCompletionTime: parseInt(estimatedCompletionTime, 10),
-    };
-    console.log("New Task:", newTask);
-    // Aquí puedes manejar el envío de la tarea, como guardarla en un estado o enviarla a un backend.
-  };
-
+  const { selectedTask } = useStore();
   return (
-    <View >
-   
+    <View>
+      <Text>{JSON.stringify(selectedTask)}</Text>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
- 
-});
+const styles = StyleSheet.create({});
 
 export default PlanningScreen;

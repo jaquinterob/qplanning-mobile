@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -10,8 +10,10 @@ import {
   Button,
 } from "react-native";
 import TaskCard from "../components/TaskCard";
-import { Task } from "../types/Task";
+import type { Task } from "../types/Task"; // Ensure this is the correct Task type
 import { useNavigation, NavigationProp } from "@react-navigation/native";
+import { mockTask } from "../mocks/task.mock";
+import { useStore } from "../store/useStore";
 
 export type RootStackParamList = {
   Home: undefined;
@@ -19,55 +21,13 @@ export type RootStackParamList = {
 };
 
 const HomeScreen: React.FC = () => {
+  const { tasks, setTasks, setSelectedTask, selectedTask } = useStore();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: "1",
-      title: "Lavar los platos",
-      emoji: "🍽️",
-      status: "pending" as const,
-      assignedTo: "Juan",
-      estimatedCompletionTime: 15,
-    },
-    {
-      id: "2",
-      title: "Sacar la basura",
-      emoji: "🗑️",
-      status: "completed" as const,
-      assignedTo: "María",
-      estimatedCompletionTime: 12,
-    },
-    {
-      id: "3",
-      title: "Limpiar el baño",
-      emoji: "🛁",
-      status: "in-progress" as const,
-      assignedTo: "Carlos",
-      estimatedCompletionTime: 17,
-    },
-    {
-      id: "4",
-      title: "Cortar el césped",
-    },
-    {
-      id: "6",
-      title: "Organizar el armario",
-    },
-    {
-      id: "7",
-      title: "Organizar el armario",
-    },
-    {
-      id: "8",
-      title: "Organizar el armario",
-    },
-  ]);
-
   const [isModalVisible, setModalVisible] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
 
-  const handleTaskPress = (taskId: string) => {
-    console.log("Task pressed:", taskId);
+  const getTasks = () => {
+    setTasks(mockTask);
   };
 
   const handleAddTaskPress = () => {
@@ -87,8 +47,13 @@ const HomeScreen: React.FC = () => {
   };
 
   const handleSavePlanning = (task: Task) => {
+    setSelectedTask(task);
     navigation?.navigate("Planning");
   };
+
+  useEffect(() => {
+    getTasks();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -124,12 +89,10 @@ const HomeScreen: React.FC = () => {
       >
         <Text style={styles.floatingButtonText}>+</Text>
       </TouchableOpacity>
-
-      {/* Modal para agregar nueva actividad */}
       <Modal
         visible={isModalVisible}
-        animationType="none" // Sin animación
-        transparent={true} // Fondo sólido
+        animationType="none"
+        transparent={true}
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalContainer}>
