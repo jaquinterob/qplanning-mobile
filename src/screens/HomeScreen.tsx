@@ -88,8 +88,6 @@ const HomeScreen: React.FC = () => {
 
   const handleSavePlanning = (task: Task) => {
     navigation?.navigate("Planning");
-    navigation.navigate("Planning");
-    console.log("Navegando a PlanningScreen para la tarea:", task.id);
   };
 
   return (

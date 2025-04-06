@@ -46,7 +46,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onLognPress }) => {
             )}
 
             <View style={styles.taskInfo}>
-              <Text style={styles.title}>{task.title}</Text>
+                <Text
+                style={[
+                  styles.title,
+                  task.status === "completed" && { textDecorationLine: "line-through" },
+                ]}
+                >
+                {task.title}
+                </Text>
 
               <View style={styles.statusContainer}>
                 {task.status && (
