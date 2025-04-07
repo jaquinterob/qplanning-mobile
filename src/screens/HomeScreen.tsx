@@ -39,6 +39,8 @@ const HomeScreen: React.FC = () => {
       const newTask: Task = {
         id: (tasks.length + 2).toString(),
         title: newTaskTitle,
+        completed:false,
+        emoji: "📦",
       };
       setTasks([...tasks, newTask]);
       setNewTaskTitle("");
@@ -57,26 +59,27 @@ const HomeScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {tasks.some((task) => !task.status) && (
+      {tasks.some((task) => !task.assignedTo) && (
         <>
           <Text style={styles.title}>Lista de actividades sin planear</Text>
+          <Text>{JSON.stringify(selectedTask)}</Text>
           <FlatList
-            data={tasks.filter((task) => !task.status)}
+            data={tasks.filter((task) => !task.assignedTo)}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <TaskCard
                 task={item}
-                onLognPress={() => handleSavePlanning(item)}
+                onLongPress={() => handleSavePlanning(item)}
               />
             )}
             contentContainerStyle={styles.listContainer}
           />
         </>
       )}
-      {tasks.some((task) => task.status) && (
+      {tasks.some((task) => task.assignedTo) && (
         <>
           <FlatList
-            data={tasks.filter((task) => task.status)}
+            data={tasks.filter((task) => task.assignedTo)}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => <TaskCard task={item} />}
             contentContainerStyle={styles.listContainer}
