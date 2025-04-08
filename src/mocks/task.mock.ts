@@ -1,3 +1,4 @@
+import { NimbleEmoji } from "emoji-mart";
 import { DEFAULT_EMOJI } from "../constants/constants";
 import { TaskCardColors } from "../enums/task-card-colors";
 import { Task } from "../types/Task";
@@ -34,7 +35,7 @@ export const mockTask: Task[] = [
     id: "4",
     title: "Cortar el césped",
     completed: false,
-    emoji: "📦",
+    emoji: DEFAULT_EMOJI,
     color: TaskCardColors.Yellow,
   },
   {
