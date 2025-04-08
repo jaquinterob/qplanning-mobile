@@ -1,4 +1,4 @@
-import { NimbleEmoji } from "emoji-mart";
+
 import { DEFAULT_EMOJI } from "../constants/constants";
 import { TaskCardColors } from "../enums/task-card-colors";
 import { Task } from "../types/Task";
