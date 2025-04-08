@@ -18,7 +18,7 @@ const AppNavigator = () => {
         <Stack.Screen
           name="Planning"
           component={PlanningScreen}
-          options={{ title: "Planeación" }}
+          options={{ title: "Planeando la actividad" }}
         />
       </Stack.Navigator>
     </NavigationContainer>

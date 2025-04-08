@@ -14,7 +14,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onLongPress }) => {
 
   return (
     <TouchableOpacity
-      style={[styles.card, task.completed && { opacity: 0.5 }]} // Aplica opacidad del 50% si está completado
+      style={[
+        styles.card,
+        task.completed && { opacity: 0.5 },
+        { backgroundColor: task.color },
+      ]}
       onLongPress={onLongPress}
     >
       <View style={styles.content}>

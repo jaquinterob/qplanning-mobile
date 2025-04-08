@@ -14,6 +14,8 @@ import type { Task } from "../types/Task"; // Ensure this is the correct Task ty
 import { useNavigation, NavigationProp } from "@react-navigation/native";
 import { mockTask } from "../mocks/task.mock";
 import { useStore } from "../store/useStore";
+import { DEFAULT_EMOJI } from "../constants/constants";
+import { TaskCardColors } from "../enums/task-card-colors";
 
 export type RootStackParamList = {
   Home: undefined;
@@ -39,8 +41,9 @@ const HomeScreen: React.FC = () => {
       const newTask: Task = {
         id: (tasks.length + 2).toString(),
         title: newTaskTitle,
-        completed:false,
-        emoji: "📦",
+        completed: false,
+        emoji: DEFAULT_EMOJI,
+        color: TaskCardColors.Default,
       };
       setTasks([...tasks, newTask]);
       setNewTaskTitle("");
@@ -62,7 +65,6 @@ const HomeScreen: React.FC = () => {
       {tasks.some((task) => !task.assignedTo) && (
         <>
           <Text style={styles.title}>Lista de actividades sin planear</Text>
-          <Text>{JSON.stringify(selectedTask)}</Text>
           <FlatList
             data={tasks.filter((task) => !task.assignedTo)}
             keyExtractor={(item) => item.id}

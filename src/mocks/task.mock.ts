@@ -1,3 +1,5 @@
+import { DEFAULT_EMOJI } from "../constants/constants";
+import { TaskCardColors } from "../enums/task-card-colors";
 import { Task } from "../types/Task";
 
 export const mockTask: Task[] = [
@@ -8,6 +10,7 @@ export const mockTask: Task[] = [
     emoji: "🍽️",
     assignedTo: "Juan",
     estimatedCompletionTime: 15,
+    color: TaskCardColors.Default,
   },
   {
     id: "2",
@@ -16,6 +19,7 @@ export const mockTask: Task[] = [
     emoji: "🗑️",
     assignedTo: "María",
     estimatedCompletionTime: 12,
+    color: TaskCardColors.Default,
   },
   {
     id: "3",
@@ -24,29 +28,34 @@ export const mockTask: Task[] = [
     emoji: "🛁",
     assignedTo: "Carlos",
     estimatedCompletionTime: 17,
+    color: TaskCardColors.Default,
   },
   {
     id: "4",
     title: "Cortar el césped",
     completed: false,
     emoji: "📦",
+    color: TaskCardColors.Yellow,
   },
   {
     id: "6",
     title: "Organizar el armario",
     completed: false,
-    emoji: "📦",
+    emoji: DEFAULT_EMOJI,
+    color: TaskCardColors.Default,
   },
   {
     id: "7",
     title: "Organizar el armario",
     completed: false,
-    emoji: "📦",
+    emoji: DEFAULT_EMOJI,
+    color: TaskCardColors.Default,
   },
   {
     id: "8",
     title: "Organizar el armario",
     completed: false,
-    emoji: "📦",
+    emoji: DEFAULT_EMOJI,
+    color: TaskCardColors.Default,
   },
 ];
