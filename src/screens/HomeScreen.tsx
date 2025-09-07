@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,40 +6,33 @@ import {
   FlatList,
   TouchableOpacity,
   Modal,
-  TextInput,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
-  TouchableWithoutFeedback,
-  Keyboard,
   Animated,
   Dimensions,
 } from "react-native";
 import TaskCard from "../components/TaskCard";
 import type { Task } from "../types/Task";
 import { useNavigation, NavigationProp } from "@react-navigation/native";
-import { mockTask } from "../mocks/task.mock";
 import { useStore } from "../store/useStore";
-import { DEFAULT_EMOJI } from "../constants/constants";
-import { TaskCardColors } from "../enums/task-card-colors";
+import { useFamilyStore } from "../store/useFamilyStore";
 import { colors } from "../theme/colors";
-import EmojiSelector from "../components/EmojiSelector";
-import ColorSelector from "../components/ColorSelector";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import Sidebar from "../components/Sidebar";
 
 export type RootStackParamList = {
+  FamilySetup: undefined;
   Home: undefined;
   Planning: undefined;
+  NewTask: undefined;
 };
 
 const HomeScreen: React.FC = () => {
-  const { tasks, setTasks, setSelectedTask, selectedTask, showToast, toastMessage } = useStore();
+  const { tasks, setTasks, setSelectedTask, selectedTask, showToast, toastMessage, loadTasks, isLoading } = useStore();
+  const { familyMembers, isFamilyConfigured, loadFamilyMembers } = useFamilyStore();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const [isModalVisible, setModalVisible] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [selectedEmoji, setSelectedEmoji] = useState(DEFAULT_EMOJI);
-  const [selectedColor, setSelectedColor] = useState(TaskCardColors.Default);
-  const [isEmojiModalVisible, setIsEmojiModalVisible] = useState(false);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(false);
+  const [hasCheckedFamilyConfig, setHasCheckedFamilyConfig] = useState(false);
   
   // Estados para celebración épica
   const [celebratingGroups, setCelebratingGroups] = useState<Set<string>>(new Set());
@@ -48,62 +41,45 @@ const HomeScreen: React.FC = () => {
   
   // Animaciones para medallas permanentes en headers
   const medalHeaderAnims = useRef<{[key: string]: Animated.Value}>({}).current;
+  
+  // Estado para modal de celebración completa
+  const [showCompleteCelebration, setShowCompleteCelebration] = useState(false);
+  const completeCelebrationAnim = useRef(new Animated.Value(0)).current;
 
-  const getTasks = () => {
-    setTasks(mockTask);
-  };
+  // Cargar datos al iniciar la app
+  useEffect(() => {
+    const initializeApp = async () => {
+      await Promise.all([
+        loadTasks(),
+        loadFamilyMembers()
+      ]);
+      setHasCheckedFamilyConfig(true);
+    };
+    
+    initializeApp();
+  }, [loadTasks, loadFamilyMembers]);
+
+  // Verificar configuración de familia SOLO UNA VEZ después de cargar
+  useEffect(() => {
+    if (hasCheckedFamilyConfig && familyMembers.length === 0) {
+      navigation.navigate('FamilySetup');
+    }
+  }, [hasCheckedFamilyConfig, familyMembers.length, navigation]);
+
+
 
   const handleAddTaskPress = () => {
-    setModalVisible(true);
+    navigation.navigate('NewTask');
   };
 
-  const handleSaveTask = () => {
-    if (newTaskTitle.trim()) {
-      const newTask: Task = {
-        id: (tasks.length + 2).toString(),
-        title: newTaskTitle,
-        completed: false,
-        emoji: selectedEmoji,
-        color: selectedColor,
-      };
-      setTasks([...tasks, newTask]);
-      setNewTaskTitle("");
-      setSelectedEmoji(DEFAULT_EMOJI);
-      setSelectedColor(TaskCardColors.Default);
-      setModalVisible(false);
-      Keyboard.dismiss(); // Ocultar teclado al guardar
-    } else {
-      Alert.alert("Error", "Por favor ingresa un título para la actividad");
-    }
-  };
-
-  const handleCancelTask = () => {
-    setNewTaskTitle("");
-    setSelectedEmoji(DEFAULT_EMOJI);
-    setSelectedColor(TaskCardColors.Default);
-    setModalVisible(false);
-    Keyboard.dismiss(); // Ocultar teclado al cancelar
-  };
 
   const handleSavePlanning = (task: Task) => {
     setSelectedTask(task);
     navigation?.navigate("Planning");
   };
 
-  const handleEmojiSelect = (emoji: string) => {
-    setSelectedEmoji(emoji);
-    setIsEmojiModalVisible(false);
-  };
 
-  const handleColorSelect = (color: TaskCardColors) => {
-    setSelectedColor(color);
-  };
-
-  const handleDismissKeyboard = () => {
-    Keyboard.dismiss();
-  };
-
-  const handleTimerStart = (taskId: string) => {
+  const handleTimerStart = useCallback((taskId: string) => {
     // Encontrar la tarea que se va a iniciar para obtener su responsable
     const taskToStart = tasks.find(task => task.id === taskId);
     if (!taskToStart || !taskToStart.assignedTo) return;
@@ -135,9 +111,9 @@ const HomeScreen: React.FC = () => {
       return task;
     });
     setTasks(updatedTasks);
-  };
+  }, [tasks, setTasks]);
 
-  const handleTimerPause = (taskId: string) => {
+  const handleTimerPause = useCallback((taskId: string) => {
     const updatedTasks = tasks.map((task) => {
       if (task.id === taskId && task.timerStartTime) {
         const sessionElapsed = Date.now() - task.timerStartTime;
@@ -152,9 +128,9 @@ const HomeScreen: React.FC = () => {
       return task;
     });
     setTasks(updatedTasks);
-  };
+  }, [tasks, setTasks]);
 
-  const handleTimerResume = (taskId: string) => {
+  const handleTimerResume = useCallback((taskId: string) => {
     // Encontrar la tarea que se va a reanudar para obtener su responsable
     const taskToResume = tasks.find(task => task.id === taskId);
     if (!taskToResume || !taskToResume.assignedTo) return;
@@ -183,9 +159,9 @@ const HomeScreen: React.FC = () => {
       return task;
     });
     setTasks(updatedTasks);
-  };
+  }, [tasks, setTasks]);
 
-  const handleTimerReset = (taskId: string) => {
+  const handleTimerReset = useCallback((taskId: string) => {
     const updatedTasks = tasks.map((task) =>
       task.id === taskId
         ? { 
@@ -199,9 +175,9 @@ const HomeScreen: React.FC = () => {
         : task
     );
     setTasks(updatedTasks);
-  };
+  }, [tasks, setTasks]);
 
-  const handleTimerStop = (taskId: string) => {
+  const handleTimerStop = useCallback((taskId: string) => {
     const updatedTasks = tasks.map((task) =>
       task.id === taskId
         ? { 
@@ -215,9 +191,9 @@ const HomeScreen: React.FC = () => {
         : task
     );
     setTasks(updatedTasks);
-  };
+  }, [tasks, setTasks]);
 
-  // 🎉 CELEBRACIÓN ÉPICA para grupos completados
+  // CELEBRACIÓN ÉPICA para grupos completados
   // 🏅 Función para inicializar animación de medalla permanente
   const initializeMedalAnimation = (responsible: string) => {
     if (!medalHeaderAnims[responsible]) {
@@ -282,7 +258,83 @@ const HomeScreen: React.FC = () => {
     });
   };
 
-  const handleTaskComplete = (taskId: string) => {
+
+
+  // Eliminar todas las tareas de una agrupación
+  const handleDeleteAllTasks = (responsible: string) => {
+    Alert.alert(
+      "Eliminar Todas las Tareas",
+      `¿Estás seguro de que quieres eliminar todas las tareas de ${responsible}?`,
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "Eliminar Todo",
+          style: "destructive",
+          onPress: () => {
+            const updatedTasks = tasks.filter(task => task.assignedTo !== responsible);
+            setTasks(updatedTasks);
+          },
+        },
+      ]
+    );
+  };
+
+  // Verificar si todas las agrupaciones están completas
+  const checkAllGroupsComplete = (currentTasks: Task[]) => {
+    const plannedTasks = currentTasks.filter(task => task.assignedTo);
+    const groupedTasks = plannedTasks.reduce((groups: { [key: string]: Task[] }, task) => {
+      const responsible = task.assignedTo || "Sin asignar";
+      if (!groups[responsible]) {
+        groups[responsible] = [];
+      }
+      groups[responsible].push(task);
+      return groups;
+    }, {});
+
+    // Verificar si hay agrupaciones y si todas están completas
+    const groupKeys = Object.keys(groupedTasks);
+    if (groupKeys.length > 0) {
+      const allGroupsComplete = groupKeys.every(responsible => {
+        const groupTasks = groupedTasks[responsible];
+        return groupTasks.every(task => task.completed);
+      });
+
+      if (allGroupsComplete) {
+        // ¡TODAS LAS AGRUPACIONES COMPLETADAS!
+        setTimeout(() => {
+          setShowCompleteCelebration(true);
+          triggerCompleteCelebration();
+        }, 500);
+      }
+    }
+  };
+
+  // Función para activar la celebración completa
+  const triggerCompleteCelebration = () => {
+    // Animación de entrada épica
+    Animated.sequence([
+      Animated.timing(completeCelebrationAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(completeCelebrationAnim, {
+        toValue: 0.95,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(completeCelebrationAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handleTaskComplete = useCallback((taskId: string) => {
     const updatedTasks = tasks.map((task) => {
       if (task.id === taskId) {
         const isCompleting = !task.completed;
@@ -320,6 +372,7 @@ const HomeScreen: React.FC = () => {
       }
       return task;
     });
+    
     setTasks(updatedTasks);
     
     // 🎯 Verificar si se completó un grupo entero para celebrar
@@ -329,54 +382,51 @@ const HomeScreen: React.FC = () => {
       const allCompleted = groupTasks.every(t => t.completed);
       
       if (allCompleted && groupTasks.length > 0) {
-        // 🎉 ¡GRUPO COMPLETADO! ¡CELEBRAR!
+        // ¡GRUPO COMPLETADO! ¡CELEBRAR!
         setTimeout(() => triggerGroupCelebration(completedTask.assignedTo!), 300);
       }
     }
-  };
+    
+    // Verificar si TODAS las agrupaciones están completas
+    checkAllGroupsComplete(updatedTasks);
+  }, [tasks, setTasks, checkAllGroupsComplete]);
 
-  useEffect(() => {
-    // Solo cargar las tareas mock si no hay tareas existentes
-    if (tasks.length === 0) {
-      getTasks();
-    }
-  }, []);
 
-  // Forzar actualización cuando se regrese a la pantalla
+
+  // Forzar actualización cuando se regrese a la pantalla - OPTIMIZADO
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      // Forzar re-render cuando se regrese a la pantalla
-      setTasks([...tasks]);
+      // Solo recargar tareas si es necesario, no forzar re-render
+      loadTasks();
     });
 
     return unsubscribe;
-  }, [navigation, tasks]);
+  }, [navigation, loadTasks]);
 
 
 
-  // Separar tareas planeadas y sin planear
-  const unplannedTasks = tasks.filter((task) => !task.assignedTo);
-  const plannedTasks = tasks.filter((task) => task.assignedTo);
+  // Separar tareas planeadas y sin planear - MEMOIZADO
+  const { unplannedTasks, plannedTasks, groupedTasks } = useMemo(() => {
+    const unplanned = tasks.filter((task) => !task.assignedTo);
+    const planned = tasks.filter((task) => task.assignedTo);
+    
+    // Agrupar tareas planeadas por responsable
+    const grouped = planned.reduce((groups: { [key: string]: Task[] }, task) => {
+      const responsible = task.assignedTo || "Sin asignar";
+      if (!groups[responsible]) {
+        groups[responsible] = [];
+      }
+      groups[responsible].push(task);
+      return groups;
+    }, {});
 
-  // Agrupar tareas planeadas por responsable
-  const groupedTasks = plannedTasks.reduce((groups: { [key: string]: Task[] }, task) => {
-    const responsible = task.assignedTo || "Sin asignar";
-    if (!groups[responsible]) {
-      groups[responsible] = [];
-    }
-    groups[responsible].push(task);
-    return groups;
-  }, {});
+    return { unplannedTasks: unplanned, plannedTasks: planned, groupedTasks: grouped };
+  }, [tasks]);
 
-  // Función para obtener el emoji del responsable
+  // Función para obtener el emoji del responsable desde la configuración
   const getResponsibleEmoji = (responsibleName: string): string => {
-    const emojiMap: { [key: string]: string } = {
-      "Eva": "👧🏻",
-      "Rafa": "👦🏻", 
-      "Mamá": "👩🏻",
-      "Papá": "👨🏻"
-    };
-    return emojiMap[responsibleName] || "👤";
+    const member = familyMembers.find(m => m.name === responsibleName && m.isActive);
+    return member?.emoji || "👤";
   };
 
   // 🏅 Componente de medalla permanente para header
@@ -406,7 +456,7 @@ const HomeScreen: React.FC = () => {
     );
   };
 
-  // 🎊 Componente de confeti y medalla épica
+  // Componente de confeti y medalla épica
   const renderGroupCelebration = (responsible: string) => {
     if (!celebratingGroups.has(responsible) || !celebrationAnims[responsible]) {
       return null;
@@ -507,8 +557,28 @@ const HomeScreen: React.FC = () => {
     );
   };
 
+  // Mostrar indicador de carga mientras se cargan las tareas
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Cargando tareas...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
+      {/* Header con botón de configuración */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>QPlanning</Text>
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={() => setIsSidebarVisible(true)}
+        >
+          <MaterialIcons name="settings" size={24} color={colors.text.primary} />
+        </TouchableOpacity>
+      </View>
+
       {showToast && (
         <View style={styles.toast}>
           <Text style={styles.toastText}>
@@ -561,8 +631,16 @@ const HomeScreen: React.FC = () => {
                         {/* 🏆 Medalla permanente titilante */}
                         {renderPermanentMedal(responsible, isGroupCompleted)}
                       </View>
-                      <View style={styles.taskCount}>
-                        <Text style={styles.taskCountText}>{tasks.length}</Text>
+                      <View style={styles.headerActions}>
+                        <View style={styles.taskCount}>
+                          <Text style={styles.taskCountText}>{tasks.length}</Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.deleteAllButton}
+                          onPress={() => handleDeleteAllTasks(responsible)}
+                        >
+                          <Text style={styles.deleteAllButtonText}>🗑️</Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
                     
@@ -617,111 +695,97 @@ const HomeScreen: React.FC = () => {
         <Text style={styles.floatingButtonText}>+</Text>
       </TouchableOpacity>
 
-      {/* Modal mejorado */}
+      {/* 🏆 Modal de Celebración Completa ÉPICA */}
       <Modal
-        visible={isModalVisible}
-        animationType="slide"
+        visible={showCompleteCelebration}
+        animationType="fade"
         transparent={true}
-        onRequestClose={handleCancelTask}
+        onRequestClose={() => setShowCompleteCelebration(false)}
       >
-        <TouchableWithoutFeedback onPress={handleDismissKeyboard}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={styles.modalOverlay}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        <View style={styles.completeCelebrationOverlay}>
+          <Animated.View 
+            style={[
+              styles.completeCelebrationContainer,
+              {
+                transform: [
+                  {
+                    scale: completeCelebrationAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.8, 1],
+                    }),
+                  },
+                ],
+                opacity: completeCelebrationAnim,
+              },
+            ]}
           >
-            <TouchableWithoutFeedback onPress={() => {}}>
-              <View style={styles.modalContainer}>
-                <View style={[styles.modalContent, { backgroundColor: selectedColor }]}>
-                  {/* Header */}
-                  <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>Nueva Actividad</Text>
-                    <TouchableOpacity
-                      style={styles.closeButton}
-                      onPress={handleCancelTask}
-                    >
-                      <Text style={styles.closeButtonText}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
+            {/* 🎊 Confeti animado */}
+            {Array.from({ length: 50 }, (_, i) => (
+              <Animated.View
+                key={i}
+                style={[
+                  styles.completeConfettiPiece,
+                  {
+                    left: Math.random() * screenWidth,
+                    backgroundColor: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF'][Math.floor(Math.random() * 8)],
+                    transform: [
+                      {
+                        translateY: completeCelebrationAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-50, 800],
+                        }),
+                      },
+                      {
+                        rotate: completeCelebrationAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0deg', '720deg'],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+            ))}
 
-                  <ScrollView 
-                    style={styles.modalBody} 
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    contentContainerStyle={styles.scrollContent}
-                  >
-                    {/* Emoji Section */}
-                    <View style={styles.section}>
-                      <Text style={styles.sectionTitle}>Emoji</Text>
-                      <TouchableOpacity
-                        style={styles.emojiSelector}
-                        onPress={() => setIsEmojiModalVisible(true)}
-                      >
-                        <Text style={styles.emojiDisplay}>{selectedEmoji}</Text>
-                        <Text style={styles.emojiHint}>Toca para cambiar</Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Color Section */}
-                    <View style={styles.section}>
-                      <Text style={styles.sectionTitle}>Color de la tarjeta</Text>
-                      <ColorSelector onSelect={handleColorSelect} />
-                    </View>
-
-                    {/* Title Section */}
-                    <View style={styles.section}>
-                      <Text style={styles.sectionTitle}>Título de la actividad</Text>
-                      <TextInput
-                        style={styles.titleInput}
-                        placeholder="¿Qué actividad quieres agregar?"
-                        placeholderTextColor={colors.text.light}
-                        value={newTaskTitle}
-                        onChangeText={setNewTaskTitle}
-                        multiline
-                        maxLength={100}
-                        returnKeyType="done"
-                        blurOnSubmit={true}
-                        onSubmitEditing={handleDismissKeyboard}
-                        textAlignVertical="top"
-                      />
-                      <Text style={styles.characterCount}>
-                        {newTaskTitle.length}/100
-                      </Text>
-                    </View>
-                  </ScrollView>
-
-                  {/* Footer */}
-                  <View style={styles.modalFooter}>
-                    <TouchableOpacity
-                      style={styles.cancelButton}
-                      onPress={handleCancelTask}
-                    >
-                      <Text style={styles.cancelButtonText}>Cancelar</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.saveButton,
-                        !newTaskTitle.trim() && styles.saveButtonDisabled,
-                      ]}
-                      onPress={handleSaveTask}
-                      disabled={!newTaskTitle.trim()}
-                    >
-                      <Text style={styles.saveButtonText}>Crear Actividad</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+            {/* 🏆 Medalla Gigante */}
+            <View style={styles.completeMedalContainer}>
+              <View style={styles.completeMedal}>
+                <Text style={styles.completeMedalEmoji}>🏆</Text>
+                <Text style={styles.completeMedalTitle}>¡MISIÓN CUMPLIDA!</Text>
+                <Text style={styles.completeMedalSubtitle}>Todos los planes han sido completados</Text>
               </View>
-            </TouchableWithoutFeedback>
-          </KeyboardAvoidingView>
-        </TouchableWithoutFeedback>
+            </View>
 
-        {/* Emoji Selector Modal */}
-        <EmojiSelector
-          visible={isEmojiModalVisible}
-          onSelect={handleEmojiSelect}
-          onClose={() => setIsEmojiModalVisible(false)}
-        />
+            {/* 💫 Efectos de brillo */}
+            <View style={styles.completeGlowEffect} />
+            <View style={[styles.completeGlowEffect, { top: 100, left: 50 }]} />
+            <View style={[styles.completeGlowEffect, { top: 200, right: 50 }]} />
+
+            {/* 🎉 Mensaje motivacional */}
+            <View style={styles.completeMessageContainer}>
+              <Text style={styles.completeMessageText}>
+                Has demostrado que con dedicación y planificación, cualquier meta es alcanzable.
+              </Text>
+            </View>
+
+            {/* ✅ Botón de cerrar */}
+            <TouchableOpacity
+              style={styles.completeCloseButton}
+              onPress={() => setShowCompleteCelebration(false)}
+            >
+              <Text style={styles.completeCloseButtonText}>Entendido</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
       </Modal>
+
+
+      {/* Sidebar */}
+      <Sidebar
+        isVisible={isSidebarVisible}
+        onClose={() => setIsSidebarVisible(false)}
+      />
+
     </View>
   );
 };
@@ -730,6 +794,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 16,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.text.primary,
+  },
+  settingsButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
   },
   scrollContainer: {
     flex: 1,
@@ -864,137 +949,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContainer: {
-    width: "90%",
-    maxWidth: 400,
-    maxHeight: "80%",
-  },
-  modalContent: {
-    borderRadius: 20,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-    overflow: "hidden",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 20,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0, 0, 0, 0.1)",
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: colors.text.primary,
-  },
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  closeButtonText: {
-    fontSize: 16,
-    color: colors.text.primary,
-    fontWeight: "bold",
-  },
-  modalBody: {
-    padding: 20,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text.primary,
-    marginBottom: 12,
-  },
-  emojiSelector: {
-    alignItems: "center",
-    padding: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.8)",
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "rgba(0, 0, 0, 0.1)",
-    borderStyle: "dashed",
-  },
-  emojiDisplay: {
-    fontSize: 48,
-    marginBottom: 8,
-  },
-  emojiHint: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    fontStyle: "italic",
-  },
-  titleInput: {
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: colors.text.primary,
-    backgroundColor: colors.white,
-    minHeight: 60,
-    textAlignVertical: "top",
-  },
-  characterCount: {
-    fontSize: 12,
-    color: colors.text.light,
-    textAlign: "right",
-    marginTop: 4,
-  },
-  modalFooter: {
-    flexDirection: "row",
-    padding: 20,
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0, 0, 0, 0.1)",
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    backgroundColor: "rgba(0, 0, 0, 0.1)",
-    alignItems: "center",
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text.primary,
-  },
-  saveButton: {
-    flex: 2,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    backgroundColor: "#6366F1",
-    alignItems: "center",
-  },
-  saveButtonDisabled: {
-    backgroundColor: colors.text.light,
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.white,
-  },
   toast: {
     position: "absolute",
     top: 0,
@@ -1021,7 +975,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   
-  // 🎊 ESTILOS ÉPICOS DE CELEBRACIÓN
+      // ESTILOS ÉPICOS DE CELEBRACIÓN
   celebrationContainer: {
     position: 'absolute',
     top: 0,
@@ -1115,6 +1069,159 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+  },
+  
+      // ESTILOS PARA ELIMINACIÓN DE TAREAS
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  deleteAllButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  deleteAllButtonText: {
+    fontSize: 16,
+  },
+  
+  // 🔄 ESTILOS PARA INDICADOR DE CARGA
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#6366F1',
+    fontWeight: '600',
+  },
+  
+      // ESTILOS ÉPICOS PARA CELEBRACIÓN COMPLETA
+  completeCelebrationOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  completeCelebrationContainer: {
+    width: '90%',
+    height: '80%',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  completeConfettiPiece: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    zIndex: 1,
+  },
+  completeMedalContainer: {
+    alignItems: 'center',
+    zIndex: 10,
+    marginBottom: 30,
+  },
+  completeMedal: {
+    backgroundColor: '#FFD700',
+    borderRadius: 100,
+    width: 200,
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FFD700',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    elevation: 20,
+    borderWidth: 8,
+    borderColor: '#FFA500',
+  },
+  completeMedalEmoji: {
+    fontSize: 60,
+    marginBottom: 10,
+  },
+  completeMedalTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#8B4513',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 3,
+  },
+  completeMedalSubtitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#A0522D',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  completeGlowEffect: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    backgroundColor: 'rgba(255, 215, 0, 0.4)',
+    borderRadius: 50,
+    zIndex: 5,
+  },
+  completeMessageContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 30,
+    marginBottom: 30,
+    zIndex: 10,
+  },
+  completeMessageTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#6366F1',
+    textAlign: 'center',
+    marginBottom: 15,
+    textShadowColor: 'rgba(99, 102, 241, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  completeMessageText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  completeCloseButton: {
+    backgroundColor: '#6366F1',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+    shadowColor: '#6366F1',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 10,
+  },
+  completeCloseButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });
 

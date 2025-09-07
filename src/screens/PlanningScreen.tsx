@@ -10,12 +10,14 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useStore } from "../store/useStore";
+import { useFamilyStore } from "../store/useFamilyStore";
 import EmojiSelector from "../components/EmojiSelector";
 import { TaskCardColors } from "../enums/task-card-colors";
 import ColorSelector from "../components/ColorSelector";
 
 const PlanningScreen: React.FC = () => {
   const { selectedTask, setSelectedTask, setTasks, tasks, setToast } = useStore();
+  const { familyMembers } = useFamilyStore();
   const navigation = useNavigation();
   const [isModalVisible, setModalVisible] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -34,14 +36,8 @@ const PlanningScreen: React.FC = () => {
     }
   }, [selectedTask]);
 
-  const familyMembers = ["Eva", "Rafa", "Mamá", "Papá"];
-
-  const familyMembersWithEmojis = [
-    { name: "Eva", emoji: "👧🏻" },
-    { name: "Rafa", emoji: "👦🏻" },
-    { name: "Mamá", emoji: "👩🏻" },
-    { name: "Papá", emoji: "👨🏻" }
-  ];
+  // Obtener miembros activos de la configuración
+  const activeFamilyMembers = familyMembers.filter(member => member.isActive);
 
   const quickTimeOptions = [
     { label: "15 min", value: 15, emoji: "⚡" },
@@ -208,9 +204,9 @@ const PlanningScreen: React.FC = () => {
           
           {/* Botones de miembros de la familia */}
           <View style={styles.familyButtonsContainer}>
-            {familyMembersWithEmojis.map((member) => (
+            {activeFamilyMembers.map((member) => (
               <TouchableOpacity
-                key={member.name}
+                key={member.id}
                 style={[
                   styles.familyButton,
                   assignedTo === member.name && styles.familyButtonSelected
