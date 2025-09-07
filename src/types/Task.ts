@@ -10,7 +10,8 @@ export interface Activity {
 }
 export interface Task extends Activity {
   emoji?: string;
-  assignedTo?: string;
+  assignedTo?: string; // Mantener para compatibilidad con tareas existentes
+  assignedMembers?: string[]; // Nuevo: array de miembros asignados
   estimatedCompletionTime?: number; // in minutes
   timerStarted?: boolean;
   timerStartTime?: number; // timestamp

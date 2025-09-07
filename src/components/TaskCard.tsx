@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from "react-native";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import type { Task } from "../types/Task";
 import { colors } from "../theme/colors";
+import { useOverdueAlert } from "../hooks/useOverdueAlert";
 
 interface TaskCardProps {
   task: Task;
@@ -16,7 +17,7 @@ interface TaskCardProps {
   onTaskComplete?: (taskId: string) => void;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({
+const TaskCard: React.FC<TaskCardProps> = React.memo(({
   task,
   onLongPress,
   isGrouped = false,
@@ -32,8 +33,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
     (task.assignedTo && !isGrouped) ||
     task.estimatedCompletionTime;
 
-  // Función para obtener el emoji del responsable
-  const getResponsibleEmoji = (responsibleName: string): string => {
+  // Función para obtener el emoji del responsable - memoizada
+  const getResponsibleEmoji = useCallback((responsibleName: string): string => {
     const emojiMap: { [key: string]: string } = {
       Eva: "👧🏻",
       Rafa: "👦🏻",
@@ -41,7 +42,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
       Papá: "👨🏻",
     };
     return emojiMap[responsibleName] || "👤";
-  };
+  }, []);
 
   // Estado del temporizador
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
@@ -49,6 +50,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
   
   // Animación para el borde pulsante
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  
+  // Hook para alerta sonora de atraso
+  const { playOverdueAlert, resetAlert } = useOverdueAlert();
 
   // Efecto para animar el borde cuando la tarea está activa
   useEffect(() => {
@@ -80,7 +84,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
     }
   }, [task.timerStarted, task.timerPaused, pulseAnim]);
 
-  // Calcular tiempo restante
+  // Calcular tiempo restante - optimizado con menos frecuencia de actualización
   useEffect(() => {
     if (
       task.timerStarted &&
@@ -88,7 +92,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
       task.timerStartTime &&
       task.estimatedCompletionTime
     ) {
-      const interval = setInterval(() => {
+      // Actualizar inmediatamente
+      const updateTime = () => {
         const currentTime = Date.now();
         const sessionElapsed = currentTime - task.timerStartTime!;
         const totalElapsed = (task.elapsedTime || 0) + sessionElapsed;
@@ -97,7 +102,18 @@ const TaskCard: React.FC<TaskCardProps> = ({
 
         setTimeRemaining(remaining);
         setIsTimerActive(remaining > 0);
-      }, 1000);
+        
+        // Reproducir alerta sonora cuando se vuelve negativo
+        if (remaining < 0 && !task.isOverdue) {
+          playOverdueAlert();
+        }
+      };
+
+      // Actualizar inmediatamente
+      updateTime();
+      
+      // Luego actualizar cada 2 segundos en lugar de cada segundo
+      const interval = setInterval(updateTime, 2000);
 
       return () => clearInterval(interval);
     } else if (
@@ -122,8 +138,15 @@ const TaskCard: React.FC<TaskCardProps> = ({
     task.estimatedCompletionTime,
   ]);
 
-  // Formatear tiempo para mostrar (incluyendo tiempo negativo)
-  const formatTime = (ms: number): string => {
+  // Resetear alerta cuando se reinicia el timer
+  useEffect(() => {
+    if (!task.timerStarted) {
+      resetAlert();
+    }
+  }, [task.timerStarted]);
+
+  // Formatear tiempo para mostrar (incluyendo tiempo negativo) - memoizada
+  const formatTime = useCallback((ms: number): string => {
     const isNegative = ms < 0;
     const absoluteMs = Math.abs(ms);
 
@@ -137,10 +160,10 @@ const TaskCard: React.FC<TaskCardProps> = ({
       .padStart(2, "0")}`;
 
     return isNegative ? `-${timeString}` : timeString;
-  };
+  }, []);
 
-  // Manejar inicio/pausa/reanudación del temporizador
-  const handleTimerToggle = () => {
+  // Manejar inicio/pausa/reanudación del temporizador - memoizada
+  const handleTimerToggle = useCallback(() => {
     if (!task.timerStarted) {
       // Iniciar temporizador
       onTimerStart?.(task.id);
@@ -151,10 +174,10 @@ const TaskCard: React.FC<TaskCardProps> = ({
       // Pausar temporizador
       onTimerPause?.(task.id);
     }
-  };
+  }, [task.timerStarted, task.timerPaused, task.id]);
 
-  // Función para renderizar el indicador de tiempo de completion
-  const renderCompletionTimeIndicator = () => {
+  // Función para renderizar el indicador de tiempo de completion - memoizada
+  const renderCompletionTimeIndicator = useCallback(() => {
     if (!task.actualCompletionTime || !task.estimatedCompletionTime) return null;
 
     const actualMinutes = Math.ceil(task.actualCompletionTime / (1000 * 60));
@@ -177,7 +200,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
         </Text>
       </View>
     );
-  };
+  }, [task.actualCompletionTime, task.estimatedCompletionTime]);
 
   return (
     <Animated.View
@@ -214,7 +237,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
       <View style={styles.content}>
         {hasOptionalProperties ? (
           <View style={styles.mainContent}>
-            {/* Botón de completar */}
+                        {/* Botón de completar */}
             <TouchableOpacity
               style={[
                 styles.completeButton,
@@ -223,11 +246,13 @@ const TaskCard: React.FC<TaskCardProps> = ({
               onPress={() => onTaskComplete?.(task.id)}
             >
               <MaterialIcons
-                                 name={task.completed ? "check" : "radio-button-unchecked"}
+                name={task.completed ? "check" : "radio-button-unchecked"}
                 size={24}
-                                 color={task.completed ? "#6366F1" : "#9CA3AF"}
+                color={task.completed ? "#6366F1" : "#9CA3AF"}
               />
             </TouchableOpacity>
+
+
             {/* Emoji container */}
             {task.emoji && (
               <View style={styles.emojiContainer}>
@@ -375,7 +400,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
       </TouchableOpacity>
     </Animated.View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {
@@ -505,6 +530,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F3F4F6",
     borderColor: "#E5E7EB",
   },
+
   timerButtonsContainer: {
     flexDirection: "row",
     alignItems: "center",
