@@ -116,6 +116,7 @@ const NewTaskScreen: React.FC = () => {
               <ColorSelector onSelect={handleColorSelect} />
             </View>
 
+
             {/* Title Section */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Título de la actividad</Text>

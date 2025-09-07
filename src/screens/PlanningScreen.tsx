@@ -23,6 +23,7 @@ const PlanningScreen: React.FC = () => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(selectedTask?.title || "");
   const [assignedTo, setAssignedTo] = useState(selectedTask?.assignedTo || "");
+  const [assignedMembers, setAssignedMembers] = useState<string[]>(selectedTask?.assignedMembers || []);
   const [estimatedTime, setEstimatedTime] = useState(
     selectedTask?.estimatedCompletionTime?.toString() || ""
   );
@@ -32,6 +33,7 @@ const PlanningScreen: React.FC = () => {
     if (selectedTask) {
       setEditedTitle(selectedTask.title || "");
       setAssignedTo(selectedTask.assignedTo || "");
+      setAssignedMembers(selectedTask.assignedMembers || []);
       setEstimatedTime(selectedTask.estimatedCompletionTime?.toString() || "");
     }
   }, [selectedTask]);
@@ -40,10 +42,13 @@ const PlanningScreen: React.FC = () => {
   const activeFamilyMembers = familyMembers.filter(member => member.isActive);
 
   const quickTimeOptions = [
-    { label: "15 min", value: 15, emoji: "⚡" },
-    { label: "30 min", value: 30, emoji: "⏰" },
-    { label: "45 min", value: 45, emoji: "🕒" },
-    { label: "1 hora", value: 60, emoji: "⏳" }
+    { label: "5 min", value: 5, emoji: "⚡" },
+    { label: "10 min", value: 10, emoji: "🚀" },
+    { label: "15 min", value: 15, emoji: "💨" },
+    { label: "20 min", value: 20, emoji: "⏰" },
+    { label: "30 min", value: 30, emoji: "🕒" },
+    { label: "45 min", value: 45, emoji: "⏳" },
+    { label: "1 hora", value: 60, emoji: "🕐" }
   ];
 
   const handleEmojiSelect = (emoji: string) => {
@@ -77,14 +82,26 @@ const PlanningScreen: React.FC = () => {
     }
   };
 
-  const handleFamilyMemberSelect = (member: string) => {
-    setAssignedTo(member);
+  const handleMultipleMemberToggle = (member: string) => {
+    const isSelected = assignedMembers.includes(member);
+    let newAssignedMembers: string[];
+    
+    if (isSelected) {
+      // Remover miembro
+      newAssignedMembers = assignedMembers.filter(m => m !== member);
+    } else {
+      // Agregar miembro
+      newAssignedMembers = [...assignedMembers, member];
+    }
+    
+    setAssignedMembers(newAssignedMembers);
+    
     if (selectedTask) {
       const updatedTasks = tasks.map((task) =>
-        task.id === selectedTask.id ? { ...task, assignedTo: member } : task
+        task.id === selectedTask.id ? { ...task, assignedMembers: newAssignedMembers } : task
       );
       setTasks(updatedTasks);
-      setSelectedTask({ ...selectedTask, assignedTo: member });
+      setSelectedTask({ ...selectedTask, assignedMembers: newAssignedMembers });
     }
   };
 
@@ -141,7 +158,9 @@ const PlanningScreen: React.FC = () => {
   };
 
   // Verificar si la planeación está completa
-  const isPlanningComplete = selectedTask?.title && selectedTask?.assignedTo && selectedTask?.estimatedCompletionTime;
+  const isPlanningComplete = selectedTask?.title && 
+    (selectedTask?.assignedTo || (selectedTask?.assignedMembers && selectedTask.assignedMembers.length > 0)) && 
+    selectedTask?.estimatedCompletionTime;
 
   const handlePlanningComplete = () => {
     if (isPlanningComplete) {
@@ -200,31 +219,56 @@ const PlanningScreen: React.FC = () => {
         </View>
 
         <View style={[styles.section, { borderColor: selectedTask?.color }]}>
-          <Text style={styles.sectionTitle}>Responsable de la actividad</Text>
+          <Text style={styles.sectionTitle}>Responsables de la actividad</Text>
           
-          {/* Botones de miembros de la familia */}
+          {/* Selector múltiple de responsables */}
           <View style={styles.familyButtonsContainer}>
             {activeFamilyMembers.map((member) => (
               <TouchableOpacity
                 key={member.id}
                 style={[
                   styles.familyButton,
-                  assignedTo === member.name && styles.familyButtonSelected
+                  assignedMembers.includes(member.name) && styles.familyButtonSelected
                 ]}
-                onPress={() => handleFamilyMemberSelect(member.name)}
+                onPress={() => handleMultipleMemberToggle(member.name)}
               >
                 <Text style={styles.familyButtonEmoji}>
                   {member.emoji}
                 </Text>
                 <Text style={[
                   styles.familyButtonText,
-                  assignedTo === member.name && styles.familyButtonTextSelected
+                  assignedMembers.includes(member.name) && styles.familyButtonTextSelected
                 ]}>
                   @{member.name}
                 </Text>
+                {assignedMembers.includes(member.name) && (
+                  <Text style={styles.checkmark}>✓</Text>
+                )}
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* Mostrar miembros seleccionados */}
+          {assignedMembers.length > 0 && (
+            <View style={styles.selectedMembersContainer}>
+              <Text style={styles.selectedMembersTitle}>Responsables seleccionados:</Text>
+              <View style={styles.selectedMembersList}>
+                {assignedMembers.map((member, index) => (
+                  <View key={index} style={styles.selectedMemberChip}>
+                    <Text style={styles.selectedMemberText}>
+                      {activeFamilyMembers.find(m => m.name === member)?.emoji} @{member}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => handleMultipleMemberToggle(member)}
+                      style={styles.removeMemberButton}
+                    >
+                      <Text style={styles.removeMemberText}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* Campo de texto libre para otros responsables */}
           <Text style={styles.subtitle}>O escribir otro responsable:</Text>
@@ -477,6 +521,57 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: "white",
+  },
+  checkmark: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    fontSize: 12,
+    color: "white",
+    fontWeight: "bold",
+  },
+  selectedMembersContainer: {
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  selectedMembersTitle: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 8,
+    fontWeight: "600",
+  },
+  selectedMembersList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  selectedMemberChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#6366F1",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  selectedMemberText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  removeMemberButton: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  removeMemberText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
+    lineHeight: 16,
   },
 });
 

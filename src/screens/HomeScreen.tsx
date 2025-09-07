@@ -336,7 +336,11 @@ const HomeScreen: React.FC = () => {
 
   const handleTaskComplete = useCallback((taskId: string) => {
     const updatedTasks = tasks.map((task) => {
-      if (task.id === taskId) {
+      // Verificar si es la tarea original o una tarea duplicada
+      const isOriginalTask = task.id === taskId;
+      const isDuplicateTask = taskId.includes('_') && task.id === taskId;
+      
+      if (isOriginalTask || isDuplicateTask) {
         const isCompleting = !task.completed;
         
         if (isCompleting && task.timerStarted) {
@@ -407,11 +411,34 @@ const HomeScreen: React.FC = () => {
 
   // Separar tareas planeadas y sin planear - MEMOIZADO
   const { unplannedTasks, plannedTasks, groupedTasks } = useMemo(() => {
-    const unplanned = tasks.filter((task) => !task.assignedTo);
-    const planned = tasks.filter((task) => task.assignedTo);
+    const unplanned = tasks.filter((task) => !task.assignedTo && (!task.assignedMembers || task.assignedMembers.length === 0));
+    const planned = tasks.filter((task) => task.assignedTo || (task.assignedMembers && task.assignedMembers.length > 0));
+    
+    // Crear tareas duplicadas para cada miembro asignado
+    const tasksWithDuplicates: Task[] = [];
+    
+    planned.forEach(task => {
+      // Si la tarea tiene múltiples miembros asignados (nuevo sistema)
+      if (task.assignedMembers && task.assignedMembers.length > 0) {
+        task.assignedMembers.forEach(member => {
+          // Crear una copia de la tarea para cada miembro
+          const taskCopy = {
+            ...task,
+            id: `${task.id}_${member}`, // ID único para cada copia
+            assignedTo: member, // Asignar al miembro específico
+            assignedMembers: undefined, // Limpiar para evitar confusión
+          };
+          tasksWithDuplicates.push(taskCopy);
+        });
+      } 
+      // Si la tarea tiene un solo responsable (sistema anterior)
+      else if (task.assignedTo) {
+        tasksWithDuplicates.push(task);
+      }
+    });
     
     // Agrupar tareas planeadas por responsable
-    const grouped = planned.reduce((groups: { [key: string]: Task[] }, task) => {
+    const grouped = tasksWithDuplicates.reduce((groups: { [key: string]: Task[] }, task) => {
       const responsible = task.assignedTo || "Sin asignar";
       if (!groups[responsible]) {
         groups[responsible] = [];
@@ -420,7 +447,7 @@ const HomeScreen: React.FC = () => {
       return groups;
     }, {});
 
-    return { unplannedTasks: unplanned, plannedTasks: planned, groupedTasks: grouped };
+    return { unplannedTasks: unplanned, plannedTasks: tasksWithDuplicates, groupedTasks: grouped };
   }, [tasks]);
 
   // Función para obtener el emoji del responsable desde la configuración
